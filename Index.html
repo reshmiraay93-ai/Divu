@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Meal Tracker — Cholesterol Control</title>
 <style>
-  /* ── Reset & Base ── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -31,7 +30,6 @@
 
   html, body { height: 100%; background: var(--bg3); font-family: var(--font); color: var(--text); }
 
-  /* ── Layout ── */
   .app {
     max-width: 520px; margin: 0 auto;
     background: var(--bg); min-height: 100vh;
@@ -52,15 +50,27 @@
   .header-title { font-size: 17px; font-weight: 600; color: var(--text); }
   .header-sub   { font-size: 11px; color: var(--text2); margin-top: 1px; }
 
+  /* Sync status dot */
+  .sync-dot {
+    margin-left: auto; display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text3);
+  }
+  .sync-dot span {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .sync-dot.syncing span { background: var(--am); animation: pulse 1s infinite; }
+  .sync-dot.synced  span { background: var(--g); }
+  .sync-dot.error   span { background: #d93025; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
   .content { flex: 1; padding: 16px 18px 40px; }
 
-  /* ── Section label ── */
   .section-label {
     font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
     text-transform: uppercase; color: var(--text3); margin-bottom: 8px;
   }
 
-  /* ── Month tabs ── */
   .month-strip {
     display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
   }
@@ -78,7 +88,6 @@
   }
   .add-month-btn:hover { background: var(--bg2); }
 
-  /* ── Calendar ── */
   .cal-header {
     display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px;
   }
@@ -110,7 +119,6 @@
   .cal-bar-wrap { width: 68%; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
   .cal-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
 
-  /* ── How-to box ── */
   .how-to {
     margin-top: 18px; padding: 14px 16px;
     background: var(--bg2); border: 1px solid var(--border);
@@ -118,7 +126,6 @@
   }
   .how-to strong { color: var(--text); font-weight: 600; }
 
-  /* ── Day view ── */
   .back-btn {
     display: inline-flex; align-items: center; gap: 5px;
     background: none; border: none; color: var(--g); font-size: 13px; font-weight: 500;
@@ -126,7 +133,6 @@
   }
   .day-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
 
-  /* ── Check-in banner ── */
   .checkin-banner {
     display: flex; align-items: center; justify-content: space-between;
     padding: 13px 16px; border-radius: var(--radius-lg); margin-bottom: 14px;
@@ -153,7 +159,6 @@
     background: var(--gm); border-radius: 100px; padding: 4px 10px;
   }
 
-  /* ── Progress bar ── */
   .progress-section { margin-bottom: 16px; }
   .progress-row {
     display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
@@ -166,13 +171,11 @@
   .progress-fill { height: 100%; border-radius: 3px; transition: width 0.35s ease; }
   .progress-done-msg { font-size: 12px; color: var(--g); font-weight: 600; margin-top: 6px; }
 
-  /* ── Meals section header ── */
   .meals-meta {
     display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;
   }
   .meals-hint { font-size: 11px; color: var(--text3); }
 
-  /* ── Meal row ── */
   .meal-row {
     border: 1px solid var(--border); border-radius: var(--radius-lg);
     background: var(--bg); margin-bottom: 10px; overflow: hidden;
@@ -236,7 +239,6 @@
   .save-btn.saved  { background: var(--g);   color: #fff; }
   .unsaved-hint { font-size: 11px; color: var(--a); margin-top: 7px; }
 
-  /* custom option add */
   .custom-add-row { display: flex; gap: 6px; margin-top: 8px; }
   .custom-input {
     flex: 1; font-size: 13px; padding: 7px 10px;
@@ -253,7 +255,6 @@
     font-size: 12px; cursor: pointer; color: var(--text2);
   }
 
-  /* ── Avoid panel ── */
   .avoid-panel {
     margin-top: 18px; padding: 14px 16px;
     background: var(--al); border: 1px solid var(--am);
@@ -268,7 +269,6 @@
   }
   .avoid-text { font-size: 13px; color: #633806; line-height: 1.6; }
 
-  /* ── Modal overlay ── */
   .modal-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5);
     display: flex; align-items: center; justify-content: center;
@@ -300,7 +300,24 @@
     background: var(--g); color: #fff; border: none; border-radius: var(--radius);
   }
 
-  /* ── Utilities ── */
+  /* Loading overlay */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.28);
+    display: flex; align-items: center; justify-content: center; z-index: 300;
+  }
+  .loading-box {
+    background: var(--bg); border-radius: 14px; padding: 16px 24px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; color: var(--g);
+    border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--gm); border-top-color: var(--g);
+    animation: spin 0.65s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .hidden { display: none !important; }
   select, input, button { font-family: var(--font); }
 </style>
@@ -308,7 +325,6 @@
 <body>
 <div class="app">
 
-  <!-- Header -->
   <header class="app-header">
     <div class="header-icon">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -320,18 +336,18 @@
       <div class="header-title">Meal Tracker</div>
       <div class="header-sub">Cholesterol control diet plan</div>
     </div>
+    <div class="sync-dot" id="sync-dot">
+      <span></span><span id="sync-label">Connecting…</span>
+    </div>
   </header>
 
-  <!-- Main content -->
   <main class="content">
 
-    <!-- Month strip -->
     <div class="section-label">Month</div>
     <div class="month-strip" id="month-strip">
       <button class="add-month-btn" onclick="openAddMonth()">+ Add month</button>
     </div>
 
-    <!-- Calendar view -->
     <div id="cal-view">
       <div class="cal-header">
         <span class="cal-month-title" id="cal-month-title"></span>
@@ -356,10 +372,11 @@
         pick your meal from the dropdown →
         press <strong>Save</strong> to record it →
         tap <strong>Mark done</strong> after eating.
+        <br><br>
+        <strong>☁ Cloud sync:</strong> All data is saved to the cloud and available on any device.
       </div>
     </div>
 
-    <!-- Day view -->
     <div id="day-view" class="hidden">
       <button class="back-btn" onclick="closeDay()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -369,7 +386,6 @@
       </button>
       <div class="day-title" id="day-title"></div>
 
-      <!-- Check-in banner -->
       <div id="checkin-banner" class="checkin-banner not-logged">
         <div class="checkin-left">
           <div class="checkin-avatar" id="checkin-avatar">—</div>
@@ -382,7 +398,6 @@
         <span class="active-badge hidden" id="active-badge">Active</span>
       </div>
 
-      <!-- Progress -->
       <div class="progress-section">
         <div class="progress-row">
           <span class="progress-label">Daily progress</span>
@@ -394,14 +409,12 @@
         <div class="progress-done-msg hidden" id="progress-done-msg">All meals completed!</div>
       </div>
 
-      <!-- Meals list -->
       <div class="meals-meta">
         <div class="section-label" style="margin-bottom:0">Meal log — 7 sections</div>
         <span class="meals-hint">Select · Save · Mark done</span>
       </div>
       <div id="meal-rows"></div>
 
-      <!-- Avoid panel -->
       <div class="avoid-panel">
         <div class="avoid-heading">
           <span class="dot" style="width:6px;height:6px;background:var(--a)"></span>
@@ -414,6 +427,14 @@
     </div>
 
   </main>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay hidden" id="loading-overlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <span id="loading-msg">Loading…</span>
+  </div>
 </div>
 
 <!-- Add month modal -->
@@ -446,7 +467,77 @@
 </div>
 
 <script>
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Supabase Config ──────────────────────────────────────────────────────────
+const SB_URL = "https://adaptrryvqqxymgvispk.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYXB0cnJ5dnFxeHltZ3Zpc3BrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MTg5OTEsImV4cCI6MjA5MjA5NDk5MX0.ZLlLjfV_CWXWrGlSLGsezWEaAvDFZSRxJdctJ2N7n1U";
+const SB_HDR = {
+  "apikey": SB_KEY,
+  "Authorization": `Bearer ${SB_KEY}`,
+  "Content-Type": "application/json"
+};
+
+// ── Supabase Helpers ─────────────────────────────────────────────────────────
+async function sbGet(key) {
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/meal_logs?day_key=eq.${encodeURIComponent(key)}&select=data`,
+      { headers: SB_HDR }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return Array.isArray(rows) && rows.length ? (rows[0].data || {}) : null;
+  } catch { return null; }
+}
+
+async function sbUpsert(key, data) {
+  setSyncState("syncing");
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/meal_logs`, {
+      method: "POST",
+      headers: { ...SB_HDR, "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify({ day_key: key, data, updated_at: new Date().toISOString() })
+    });
+    setSyncState(r.ok ? "synced" : "error");
+    return r.ok;
+  } catch {
+    setSyncState("error");
+    return false;
+  }
+}
+
+async function sbGetMonth(year, month) {
+  // Use gte/lt range — more reliable than LIKE
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const nextM = month === 11 ? 0 : month + 1;
+  const nextY = month === 11 ? year + 1 : year;
+  const end   = `${nextY}-${String(nextM + 1).padStart(2, "0")}-01`;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/meal_logs?day_key=gte.${start}&day_key=lt.${end}&select=day_key,data`,
+      { headers: SB_HDR }
+    );
+    if (!r.ok) return {};
+    const rows = await r.json();
+    const map = {};
+    if (Array.isArray(rows)) rows.forEach(row => { map[row.day_key] = row.data || {}; });
+    return map;
+  } catch { return {}; }
+}
+
+// ── Sync indicator ────────────────────────────────────────────────────────────
+let syncTimer = null;
+function setSyncState(state) {
+  const el = document.getElementById("sync-dot");
+  const lb = document.getElementById("sync-label");
+  el.className = "sync-dot " + state;
+  if (state === "syncing") lb.textContent = "Syncing…";
+  if (state === "synced")  lb.textContent = "Synced";
+  if (state === "error")   lb.textContent = "Offline";
+  clearTimeout(syncTimer);
+  if (state === "synced") syncTimer = setTimeout(() => { el.className = "sync-dot"; lb.textContent = "Cloud"; }, 3000);
+}
+
+// ── Constants ────────────────────────────────────────────────────────────────
 const MONTH_NAMES = ["January","February","March","April","May","June",
                      "July","August","September","October","November","December"];
 
@@ -474,93 +565,126 @@ const MEALS = [
     opts:["Warm turmeric milk","Warm turmeric + pepper milk","Warm ginger + turmeric milk","Warm ashwagandha milk"] },
 ];
 
-// ── Storage ──────────────────────────────────────────────────────────────────
-function load(k, def) {
-  try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch { return def; }
-}
-function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
-
 // ── State ─────────────────────────────────────────────────────────────────────
-const now = new Date();
+const now      = new Date();
 const todayKey = mkDKey(now.getFullYear(), now.getMonth(), now.getDate());
 
-let months    = load("chol-months", []);
+let months    = [];
 let activeId  = null;
 let activeDay = null;
-let mealOpts  = load("chol-opts", Object.fromEntries(MEALS.map(m => [m.id, [...m.opts]])));
-
-// Ensure base options always present
-MEALS.forEach(m => {
-  if (!mealOpts[m.id]) mealOpts[m.id] = [...m.opts];
-  m.opts.forEach(o => { if (!mealOpts[m.id].includes(o)) mealOpts[m.id].unshift(o); });
-});
+// mealOpts: base options + any custom ones added by user
+let mealOpts  = Object.fromEntries(MEALS.map(m => [m.id, [...m.opts]]));
+// In-memory current day data (loaded from Supabase on openDay)
+let dayData   = {};
+// In-memory current month data (loaded from Supabase on renderCalendar)
+let monthData = {};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function mkMId(y,m)  { return `${y}-${String(m+1).padStart(2,"0")}`; }
-function mkDKey(y,m,d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-function daysIn(y,m) { return new Date(y,m+1,0).getDate(); }
-function firstDay(y,m) { return new Date(y,m,1).getDay(); }
-function loadDay(dk) { return load(`cd-${dk}`, {}); }
-function saveDay(dk,data) { save(`cd-${dk}`, data); }
+function mkMId(y, m)    { return `${y}-${String(m + 1).padStart(2, "0")}`; }
+function mkDKey(y, m, d){ return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`; }
+function daysIn(y, m)   { return new Date(y, m + 1, 0).getDate(); }
+function firstDay(y, m) { return new Date(y, m, 1).getDay(); }
+function getActiveMonth(){ return months.find(m => m.id === activeId); }
+
 function fmtTime(iso) {
-  try { return new Date(iso).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}); }
+  try { return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }); }
   catch { return ""; }
 }
 function fmtDate(dk) {
-  const [y,mo,d] = dk.split("-").map(Number);
-  return new Date(y,mo-1,d).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const [y, mo, d] = dk.split("-").map(Number);
+  return new Date(y, mo - 1, d).toLocaleDateString("en-IN",
+    { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
-function getActiveMonth() { return months.find(m => m.id === activeId); }
+
+// ── Loading overlay ───────────────────────────────────────────────────────────
+function showLoading(msg = "Loading…") {
+  document.getElementById("loading-msg").textContent = msg;
+  document.getElementById("loading-overlay").classList.remove("hidden");
+}
+function hideLoading() {
+  document.getElementById("loading-overlay").classList.add("hidden");
+}
+
+// ── Config: save/load months + custom meal options ────────────────────────────
+async function saveConfig() {
+  await sbUpsert("__config__", { months, mealOpts });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-(function init() {
-  if (!months.length) {
+(async function init() {
+  showLoading("Connecting to cloud…");
+
+  const cfg = await sbGet("__config__");
+
+  if (cfg && cfg.months && cfg.months.length) {
+    months = cfg.months;
+    // Merge saved custom options with base options
+    if (cfg.mealOpts) {
+      MEALS.forEach(m => {
+        const saved = cfg.mealOpts[m.id] || [];
+        const merged = [...m.opts];
+        saved.forEach(o => { if (!merged.includes(o)) merged.push(o); });
+        mealOpts[m.id] = merged;
+      });
+    }
+  } else {
+    // First-time setup: create current month
     const def = {
       id: mkMId(now.getFullYear(), now.getMonth()),
       year: now.getFullYear(), month: now.getMonth(),
       label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`,
     };
     months = [def];
-    save("chol-months", months);
+    await saveConfig();
   }
-  activeId = months[months.length-1].id;
 
-  // Preset new-month modal defaults
+  activeId = months[months.length - 1].id;
+
   document.getElementById("new-month").value = now.getMonth();
   document.getElementById("new-year").value  = now.getFullYear();
 
   renderMonthTabs();
-  renderCalendar();
+  await renderCalendar();
+  setSyncState("synced");
+  hideLoading();
 })();
 
 // ── Month tabs ────────────────────────────────────────────────────────────────
 function renderMonthTabs() {
-  const strip = document.getElementById("month-strip");
+  const strip  = document.getElementById("month-strip");
   const addBtn = strip.querySelector(".add-month-btn");
-  // remove old tab buttons
   strip.querySelectorAll(".month-btn").forEach(b => b.remove());
 
   months.forEach(m => {
     const btn = document.createElement("button");
     btn.className = "month-btn" + (m.id === activeId ? " active" : "");
     btn.textContent = m.label;
-    btn.onclick = () => { activeId = m.id; activeDay = null; renderMonthTabs(); showCal(); };
+    btn.onclick = async () => {
+      activeId = m.id; activeDay = null;
+      renderMonthTabs();
+      showLoading("Loading " + m.label + "…");
+      await renderCalendar();
+      hideLoading();
+    };
     strip.insertBefore(btn, addBtn);
   });
 }
 
 // ── Calendar render ───────────────────────────────────────────────────────────
-function renderCalendar() {
+async function renderCalendar() {
   const am = getActiveMonth();
   if (!am) return;
   document.getElementById("cal-month-title").textContent = am.label;
+
+  // Fetch all days for this month in one request
+  monthData = await sbGetMonth(am.year, am.month);
+
   const grid = document.getElementById("cal-grid");
   grid.innerHTML = "";
   const { year, month } = am;
   const days  = daysIn(year, month);
   const start = firstDay(year, month);
 
-  // blank spacers
   for (let i = 0; i < start; i++) {
     const sp = document.createElement("div");
     sp.className = "cal-cell empty";
@@ -568,8 +692,8 @@ function renderCalendar() {
   }
 
   for (let d = 1; d <= days; d++) {
-    const dk   = mkDKey(year, month, d);
-    const data = loadDay(dk);
+    const dk      = mkDKey(year, month, d);
+    const data    = monthData[dk] || {};
     const checked = MEALS.filter(m => data[m.id]?.checked).length;
     const pct     = checked / MEALS.length;
     const loggedIn = !!data._loggedIn;
@@ -577,28 +701,25 @@ function renderCalendar() {
 
     const cell = document.createElement("button");
     cell.className = "cal-cell" +
-      (isToday ? " today" : "") +
+      (isToday  ? " today"    : "") +
       (pct >= 1 ? " complete" : pct > 0 ? " partial" : "");
     cell.onclick = () => openDay(dk);
 
-    // Day number
     const num = document.createElement("span");
     num.textContent = d;
     cell.appendChild(num);
 
-    // Progress bar
     if (pct > 0) {
       const wrap = document.createElement("div");
       wrap.className = "cal-bar-wrap";
       const bar = document.createElement("div");
       bar.className = "cal-bar";
-      bar.style.width = `${Math.round(pct*100)}%`;
+      bar.style.width = `${Math.round(pct * 100)}%`;
       bar.style.background = pct >= 1 ? "var(--g)" : "var(--a)";
       wrap.appendChild(bar);
       cell.appendChild(wrap);
     }
 
-    // Logged-in dot (only when no meals yet)
     if (loggedIn && pct === 0) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -610,38 +731,49 @@ function renderCalendar() {
   }
 }
 
-function showCal() {
+async function showCal() {
   document.getElementById("cal-view").classList.remove("hidden");
   document.getElementById("day-view").classList.add("hidden");
-  document.getElementById("cal-month-title").textContent = (getActiveMonth()||{}).label || "";
-  renderCalendar();
+  showLoading();
+  await renderCalendar();
+  hideLoading();
 }
 
 // ── Day view ──────────────────────────────────────────────────────────────────
-function openDay(dk) {
+async function openDay(dk) {
+  showLoading("Loading day…");
   activeDay = dk;
+
+  // Load day data from Supabase
+  const fetched = await sbGet(dk);
+  dayData = fetched || {};
+
   document.getElementById("cal-view").classList.add("hidden");
   document.getElementById("day-view").classList.remove("hidden");
 
   const am = getActiveMonth();
   document.getElementById("back-label").textContent = `Back to ${am ? am.label : ""}`;
-  document.getElementById("day-title").textContent = fmtDate(dk);
+  document.getElementById("day-title").textContent  = fmtDate(dk);
 
   renderCheckin();
   renderProgress();
   renderMeals();
+  hideLoading();
 }
 
-function closeDay() {
+async function closeDay() {
   activeDay = null;
-  renderCalendar();
-  showCal();
+  dayData   = {};
+  showLoading();
+  document.getElementById("cal-view").classList.remove("hidden");
+  document.getElementById("day-view").classList.add("hidden");
+  await renderCalendar();
+  hideLoading();
 }
 
 // ── Check-in ──────────────────────────────────────────────────────────────────
 function renderCheckin() {
-  const data     = loadDay(activeDay);
-  const loggedIn = !!data._loggedIn;
+  const loggedIn = !!dayData._loggedIn;
   const banner   = document.getElementById("checkin-banner");
   const avatar   = document.getElementById("checkin-avatar");
   const title    = document.getElementById("checkin-title");
@@ -650,19 +782,19 @@ function renderCheckin() {
   const badge    = document.getElementById("active-badge");
 
   if (loggedIn) {
-    banner.classList.replace("not-logged","logged");
-    avatar.textContent = "✓";
-    title.textContent = "Day logged in";
-    title.style.color = "var(--g)";
-    sub.textContent = `Checked in at ${fmtTime(data._loginTime)}`;
+    banner.classList.replace("not-logged", "logged");
+    avatar.textContent     = "✓";
+    title.textContent      = "Day logged in";
+    title.style.color      = "var(--g)";
+    sub.textContent        = `Checked in at ${fmtTime(dayData._loginTime)}`;
     loginBtn.classList.add("hidden");
     badge.classList.remove("hidden");
   } else {
-    banner.classList.replace("logged","not-logged");
-    avatar.textContent = "—";
-    title.textContent = "Start tracking this day";
-    title.style.color = "";
-    sub.textContent = "Tap Log In to begin your meal log";
+    banner.classList.replace("logged", "not-logged");
+    avatar.textContent     = "—";
+    title.textContent      = "Start tracking this day";
+    title.style.color      = "";
+    sub.textContent        = "Tap Log In to begin your meal log";
     loginBtn.classList.remove("hidden");
     badge.classList.add("hidden");
   }
@@ -670,46 +802,43 @@ function renderCheckin() {
 
 function doLogin() {
   if (!activeDay) return;
-  const data = loadDay(activeDay);
-  data._loggedIn  = true;
-  data._loginTime = new Date().toISOString();
-  saveDay(activeDay, data);
+  dayData._loggedIn  = true;
+  dayData._loginTime = new Date().toISOString();
   renderCheckin();
+  // Save to cloud in background
+  sbUpsert(activeDay, dayData);
 }
 
 // ── Progress ──────────────────────────────────────────────────────────────────
 function renderProgress() {
-  const data    = loadDay(activeDay);
-  const checked = MEALS.filter(m => data[m.id]?.checked).length;
+  const checked = MEALS.filter(m => dayData[m.id]?.checked).length;
   const total   = MEALS.length;
-  const pct     = Math.round((checked/total)*100);
-  document.getElementById("progress-count").textContent = `${checked} / ${total} meals done`;
-  document.getElementById("progress-count").style.color = pct===100 ? "var(--g)" : "";
-  document.getElementById("progress-fill").style.width  = `${pct}%`;
-  document.getElementById("progress-fill").style.background = pct===100 ? "var(--g)" : "var(--a)";
+  const pct     = Math.round((checked / total) * 100);
+  document.getElementById("progress-count").textContent  = `${checked} / ${total} meals done`;
+  document.getElementById("progress-count").style.color  = pct === 100 ? "var(--g)" : "";
+  document.getElementById("progress-fill").style.width   = `${pct}%`;
+  document.getElementById("progress-fill").style.background = pct === 100 ? "var(--g)" : "var(--a)";
   const doneMsg = document.getElementById("progress-done-msg");
-  pct===100 ? doneMsg.classList.remove("hidden") : doneMsg.classList.add("hidden");
+  pct === 100 ? doneMsg.classList.remove("hidden") : doneMsg.classList.add("hidden");
 }
 
 // ── Meal rows ─────────────────────────────────────────────────────────────────
 function renderMeals() {
   const container = document.getElementById("meal-rows");
   container.innerHTML = "";
-  const data = loadDay(activeDay);
 
   MEALS.forEach(meal => {
-    const md      = data[meal.id] || {};
+    const md      = dayData[meal.id] || {};
     const checked = !!md.checked;
     const opts    = mealOpts[meal.id] || meal.opts;
     const sel     = md.selected || opts[0];
 
-    // Row wrapper
     const row = document.createElement("div");
     row.className = "meal-row" + (checked ? " checked" : "");
     row.id = `meal-row-${meal.id}`;
 
-    // ── Header ──
-    const hdr = document.createElement("div");
+    // Header
+    const hdr  = document.createElement("div");
     hdr.className = "meal-row-header";
 
     const left = document.createElement("div");
@@ -729,7 +858,6 @@ function renderMeals() {
 
     left.append(dot, name, timeBadge);
 
-    // Mark done button
     const mdBtn = document.createElement("button");
     mdBtn.className = "mark-done-btn " + (checked ? "done" : "undone");
     mdBtn.id = `md-btn-${meal.id}`;
@@ -743,7 +871,7 @@ function renderMeals() {
 
     hdr.append(left, mdBtn);
 
-    // ── Body ──
+    // Body
     const body = document.createElement("div");
     body.className = "meal-row-body";
 
@@ -755,7 +883,6 @@ function renderMeals() {
     selLabel.className = "meal-sel-label";
     selLabel.textContent = "Meal selection";
 
-    // Controls row
     const controls = document.createElement("div");
     controls.className = "meal-controls";
 
@@ -770,7 +897,7 @@ function renderMeals() {
       select.appendChild(opt);
     });
     const addOpt = document.createElement("option");
-    addOpt.value = "__add__"; addOpt.textContent = "+ Add custom option...";
+    addOpt.value = "__add__"; addOpt.textContent = "+ Add custom option…";
     select.appendChild(addOpt);
 
     const saveBtn = document.createElement("button");
@@ -782,40 +909,45 @@ function renderMeals() {
     select.onchange = () => {
       if (select.value === "__add__") {
         select.value = sel;
-        showCustomAdd(meal.id, select, saveBtn);
+        showCustomAdd(meal.id);
         return;
       }
-      const changed = select.value !== (loadDay(activeDay)[meal.id]?.selected || opts[0]);
+      const currentSel = (dayData[meal.id]?.selected) || opts[0];
+      const changed = select.value !== currentSel;
       setSaveBtnState(saveBtn, changed ? "dirty" : "idle");
     };
 
     controls.append(select, saveBtn);
 
-    // Hint
     const hint = document.createElement("p");
     hint.className = "unsaved-hint hidden";
     hint.id = `hint-${meal.id}`;
     hint.textContent = "Unsaved changes — tap Save to confirm.";
 
-    // Custom add row (hidden by default)
     const customRow = document.createElement("div");
     customRow.className = "custom-add-row hidden";
     customRow.id = `custom-${meal.id}`;
-    const customInput = document.createElement("input");
-    customInput.type = "text"; customInput.className = "custom-input";
-    customInput.placeholder = "Type your custom meal...";
-    customInput.onkeydown = e => {
-      if (e.key==="Enter") commitCustom(meal.id, customInput, select, saveBtn, customRow, hint);
-      if (e.key==="Escape") { customRow.classList.add("hidden"); customInput.value=""; }
-    };
-    const confirmBtn = document.createElement("button");
-    confirmBtn.className = "custom-confirm-btn"; confirmBtn.textContent = "Add";
-    confirmBtn.onclick = () => commitCustom(meal.id, customInput, select, saveBtn, customRow, hint);
-    const cancelBtn = document.createElement("button");
-    cancelBtn.className = "custom-cancel-btn"; cancelBtn.textContent = "✕";
-    cancelBtn.onclick = () => { customRow.classList.add("hidden"); customInput.value=""; };
-    customRow.append(customInput, confirmBtn, cancelBtn);
 
+    const customInput = document.createElement("input");
+    customInput.type = "text";
+    customInput.className = "custom-input";
+    customInput.placeholder = "Type your custom meal…";
+    customInput.onkeydown = e => {
+      if (e.key === "Enter")  commitCustom(meal.id, customInput, select, saveBtn, customRow);
+      if (e.key === "Escape") { customRow.classList.add("hidden"); customInput.value = ""; }
+    };
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "custom-confirm-btn";
+    confirmBtn.textContent = "Add";
+    confirmBtn.onclick = () => commitCustom(meal.id, customInput, select, saveBtn, customRow);
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "custom-cancel-btn";
+    cancelBtn.textContent = "✕";
+    cancelBtn.onclick = () => { customRow.classList.add("hidden"); customInput.value = ""; };
+
+    customRow.append(customInput, confirmBtn, cancelBtn);
     body.append(noteEl, selLabel, controls, hint, customRow);
     row.append(hdr, body);
     container.appendChild(row);
@@ -824,61 +956,59 @@ function renderMeals() {
 
 function setSaveBtnState(btn, state) {
   btn.className = `save-btn ${state}`;
-  const mealId = btn.id.replace("save-btn-","");
+  const mealId = btn.id.replace("save-btn-", "");
   const hint   = document.getElementById(`hint-${mealId}`);
-  if (state==="dirty")  { btn.textContent = "Save";     if(hint) hint.classList.remove("hidden"); }
-  if (state==="saving") { btn.textContent = "Saving..."; if(hint) hint.classList.add("hidden"); }
-  if (state==="saved")  { btn.textContent = "✓ Saved";   if(hint) hint.classList.add("hidden"); }
-  if (state==="idle")   { btn.textContent = "Saved";     if(hint) hint.classList.add("hidden"); }
+  if (state === "dirty")  { btn.textContent = "Save";     if (hint) hint.classList.remove("hidden"); }
+  if (state === "saving") { btn.textContent = "Saving…";  if (hint) hint.classList.add("hidden"); }
+  if (state === "saved")  { btn.textContent = "✓ Saved";  if (hint) hint.classList.add("hidden"); }
+  if (state === "idle")   { btn.textContent = "Saved";    if (hint) hint.classList.add("hidden"); }
 }
 
 async function doSave(mealId, saveBtn, select) {
   if (!saveBtn.classList.contains("dirty")) return;
   setSaveBtnState(saveBtn, "saving");
-  const data = loadDay(activeDay);
-  const opts = mealOpts[mealId] || MEALS.find(m=>m.id===mealId).opts;
-  if (!data[mealId]) data[mealId] = { selected: opts[0], checked: false };
-  data[mealId].selected = select.value;
-  saveDay(activeDay, data);
-  await new Promise(r => setTimeout(r, 350));
+
+  if (!dayData[mealId]) dayData[mealId] = { selected: (mealOpts[mealId] || [])[0], checked: false };
+  dayData[mealId].selected = select.value;
+
+  await sbUpsert(activeDay, dayData);
   setSaveBtnState(saveBtn, "saved");
   setTimeout(() => setSaveBtnState(saveBtn, "idle"), 2200);
 }
 
 function toggleDone(mealId) {
-  const data = loadDay(activeDay);
-  const opts = mealOpts[mealId] || MEALS.find(m=>m.id===mealId).opts;
-  if (!data[mealId]) data[mealId] = { selected: opts[0], checked: false };
-  data[mealId].checked = !data[mealId].checked;
-  saveDay(activeDay, data);
+  const opts = mealOpts[mealId] || MEALS.find(m => m.id === mealId).opts;
+  if (!dayData[mealId]) dayData[mealId] = { selected: opts[0], checked: false };
+  dayData[mealId].checked = !dayData[mealId].checked;
 
-  // Update row class
-  const row   = document.getElementById(`meal-row-${mealId}`);
-  const btn   = document.getElementById(`md-btn-${mealId}`);
-  const checked = data[mealId].checked;
+  // Optimistic UI update
+  const checked = dayData[mealId].checked;
+  const row     = document.getElementById(`meal-row-${mealId}`);
+  const btn     = document.getElementById(`md-btn-${mealId}`);
   row.classList.toggle("checked", checked);
   btn.className = "mark-done-btn " + (checked ? "done" : "undone");
   btn.querySelector(".mark-done-circle").textContent = checked ? "✓" : "";
-  btn.querySelector("span:last-child").textContent = checked ? "Done" : "Mark done";
+  btn.querySelector("span:last-child").textContent   = checked ? "Done" : "Mark done";
   renderProgress();
+
+  // Save to cloud in background
+  sbUpsert(activeDay, dayData);
 }
 
-function showCustomAdd(mealId, select, saveBtn) {
+function showCustomAdd(mealId) {
   const row = document.getElementById(`custom-${mealId}`);
   row.classList.remove("hidden");
   row.querySelector("input").focus();
 }
 
-function commitCustom(mealId, input, select, saveBtn, customRow, hint) {
+async function commitCustom(mealId, input, select, saveBtn, customRow) {
   const val = input.value.trim();
   if (!val) return;
 
-  // Add to opts
-  if (!mealOpts[mealId]) mealOpts[mealId] = [];
+  if (!mealOpts[mealId]) mealOpts[mealId] = [...(MEALS.find(m => m.id === mealId)?.opts || [])];
   if (!mealOpts[mealId].includes(val)) mealOpts[mealId].push(val);
-  save("chol-opts", mealOpts);
 
-  // Add to select
+  // Add to select dropdown
   const opt = document.createElement("option");
   opt.value = val; opt.textContent = val; opt.selected = true;
   const addOptEl = select.querySelector("option[value='__add__']");
@@ -888,42 +1018,55 @@ function commitCustom(mealId, input, select, saveBtn, customRow, hint) {
   input.value = "";
   customRow.classList.add("hidden");
   setSaveBtnState(saveBtn, "dirty");
+
+  // Persist custom options to cloud
+  saveConfig();
 }
 
 // ── Add month modal ───────────────────────────────────────────────────────────
 function openAddMonth() {
-  const nm = document.getElementById("new-month");
-  const ny = document.getElementById("new-year");
-  nm.value = now.getMonth();
-  ny.value = now.getFullYear();
+  document.getElementById("new-month").value = now.getMonth();
+  document.getElementById("new-year").value  = now.getFullYear();
   updateModalBtn();
-  nm.onchange = updateModalBtn;
-  ny.oninput  = updateModalBtn;
+  document.getElementById("new-month").onchange = updateModalBtn;
+  document.getElementById("new-year").oninput   = updateModalBtn;
   document.getElementById("modal").classList.remove("hidden");
 }
+
 function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+
 function updateModalBtn() {
   const m = parseInt(document.getElementById("new-month").value);
   const y = parseInt(document.getElementById("new-year").value);
   document.getElementById("modal-add-btn").textContent = `Add ${MONTH_NAMES[m]} ${y}`;
 }
 
-function addMonth() {
+async function addMonth() {
   const m  = parseInt(document.getElementById("new-month").value);
   const y  = parseInt(document.getElementById("new-year").value);
   const id = mkMId(y, m);
 
   if (months.find(x => x.id === id)) {
-    activeId = id; closeModal(); renderMonthTabs(); renderCalendar(); return;
+    activeId = id;
+    closeModal();
+    renderMonthTabs();
+    showLoading();
+    await renderCalendar();
+    hideLoading();
+    return;
   }
-  const entry = { id, year:y, month:m, label:`${MONTH_NAMES[m]} ${y}` };
+
+  const entry = { id, year: y, month: m, label: `${MONTH_NAMES[m]} ${y}` };
   months.push(entry);
-  months.sort((a,b) => a.id.localeCompare(b.id));
-  save("chol-months", months);
+  months.sort((a, b) => a.id.localeCompare(b.id));
   activeId = id;
+
   closeModal();
+  showLoading("Saving…");
+  await saveConfig();
   renderMonthTabs();
-  showCal();
+  await renderCalendar();
+  hideLoading();
 }
 
 // Close modal on backdrop click
