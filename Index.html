@@ -127,10 +127,15 @@
   .how-to strong { color: var(--text); font-weight: 600; }
 
   .back-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: none; border: none; color: var(--g); font-size: 13px; font-weight: 500;
-    cursor: pointer; padding: 0; margin-bottom: 14px;
+    display: inline-flex; align-items: center; gap: 9px;
+    background: var(--gl); border: 2px solid var(--gm); color: var(--g);
+    font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
+    cursor: pointer; padding: 10px 20px; margin-bottom: 18px;
+    border-radius: 100px;
+    box-shadow: 0 2px 10px rgba(59,109,17,0.15);
+    transition: all 0.15s;
   }
+  .back-btn:hover { background: var(--gm); box-shadow: 0 3px 14px rgba(59,109,17,0.22); }
   .day-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
 
   .checkin-banner {
@@ -318,6 +323,28 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Finish Day button */
+  .finish-day-wrap {
+    margin-top: 22px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .finish-day-btn {
+    width: 100%; padding: 17px 20px;
+    background: var(--g); color: #fff;
+    border: none; border-radius: var(--radius-lg);
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 18px rgba(59,109,17,0.28);
+    letter-spacing: 0.01em;
+  }
+  .finish-day-btn:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(59,109,17,0.32); }
+  .finish-day-btn:active:not(:disabled) { transform: translateY(0); }
+  .finish-day-btn:disabled { cursor: not-allowed; }
+  .finish-day-btn.saving { opacity: 0.7; }
+  .finish-day-btn.done { background: var(--gm); color: var(--g); box-shadow: none; }
+  .finish-day-btn.error-state { background: var(--a); }
+
   .hidden { display: none !important; }
   select, input, button { font-family: var(--font); }
 </style>
@@ -379,8 +406,8 @@
 
     <div id="day-view" class="hidden">
       <button class="back-btn" onclick="closeDay()">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M9 2L4 7l5 5" stroke="var(--g)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+          <path d="M9 2L4 7l5 5" stroke="var(--g)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span id="back-label">Back</span>
       </button>
@@ -424,7 +451,18 @@
           Packaged cakes, biscuits, fast foods, fried foods, butter, cheese, cream, red meat. Limit salt.
         </p>
       </div>
-    </div>
+
+      <!-- Finish Day button -->
+      <div class="finish-day-wrap">
+        <button class="finish-day-btn" id="finish-day-btn" onclick="saveAllAndFinish()">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.8"/>
+            <path d="M6.5 10l2.5 2.5 4.5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Save All &amp; Mark Day Complete</span>
+        </button>
+      </div>
+    </div><!-- end day-view -->
 
   </main>
 </div>
@@ -492,14 +530,20 @@ async function sbGet(key) {
 async function sbUpsert(key, data) {
   setSyncState("syncing");
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/meal_logs`, {
+    // on_conflict=day_key tells PostgREST which column to use for the upsert merge
+    const r = await fetch(`${SB_URL}/rest/v1/meal_logs?on_conflict=day_key`, {
       method: "POST",
-      headers: { ...SB_HDR, "Prefer": "resolution=merge-duplicates" },
+      headers: { ...SB_HDR, "Prefer": "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify({ day_key: key, data, updated_at: new Date().toISOString() })
     });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => "");
+      console.error("sbUpsert failed:", r.status, errText);
+    }
     setSyncState(r.ok ? "synced" : "error");
     return r.ok;
-  } catch {
+  } catch(e) {
+    console.error("sbUpsert error:", e);
     setSyncState("error");
     return false;
   }
@@ -758,6 +802,11 @@ async function openDay(dk) {
   renderCheckin();
   renderProgress();
   renderMeals();
+
+  // Reset finish button
+  const fb = document.getElementById("finish-day-btn");
+  if (fb) { fb.disabled = false; fb.className = "finish-day-btn"; fb.querySelector("span").textContent = "Save All & Mark Day Complete"; }
+
   hideLoading();
 }
 
@@ -1021,6 +1070,54 @@ async function commitCustom(mealId, input, select, saveBtn, customRow) {
 
   // Persist custom options to cloud
   saveConfig();
+}
+
+// ── Save All & Finish Day ─────────────────────────────────────────────────────
+async function saveAllAndFinish() {
+  const btn     = document.getElementById("finish-day-btn");
+  const btnSpan = btn.querySelector("span");
+  btn.disabled  = true;
+  btn.className = "finish-day-btn saving";
+  btnSpan.textContent = "Saving…";
+
+  // 1. Flush all dropdown selections into dayData
+  MEALS.forEach(meal => {
+    const select = document.getElementById(`sel-${meal.id}`);
+    if (!dayData[meal.id]) dayData[meal.id] = {};
+    if (select && select.value !== "__add__") {
+      dayData[meal.id].selected = select.value;
+    }
+    // Mark every meal as done
+    dayData[meal.id].checked = true;
+  });
+
+  // 2. Auto-login if not already logged in
+  if (!dayData._loggedIn) {
+    dayData._loggedIn  = true;
+    dayData._loginTime = new Date().toISOString();
+  }
+
+  // 3. Persist to Supabase
+  const ok = await sbUpsert(activeDay, dayData);
+
+  if (ok) {
+    btn.className = "finish-day-btn done";
+    btnSpan.textContent = "✓ Saved! Day is now green on calendar";
+    // Refresh all day-view UI to show everything checked
+    renderCheckin();
+    renderProgress();
+    renderMeals();
+    // Brief pause then go back so user sees green calendar cell
+    setTimeout(() => closeDay(), 1400);
+  } else {
+    btn.disabled  = false;
+    btn.className = "finish-day-btn error-state";
+    btnSpan.textContent = "⚠ Save failed — check connection and retry";
+    setTimeout(() => {
+      btn.className = "finish-day-btn";
+      btnSpan.textContent = "Save All & Mark Day Complete";
+    }, 3000);
+  }
 }
 
 // ── Add month modal ───────────────────────────────────────────────────────────
