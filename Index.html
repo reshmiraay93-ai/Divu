@@ -530,19 +530,44 @@ async function sbGet(key) {
 async function sbUpsert(key, data) {
   setSyncState("syncing");
   try {
-    // on_conflict=day_key tells PostgREST which column to use for the upsert merge
-    const r = await fetch(`${SB_URL}/rest/v1/meal_logs?on_conflict=day_key`, {
-      method: "POST",
-      headers: { ...SB_HDR, "Prefer": "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ day_key: key, data, updated_at: new Date().toISOString() })
-    });
-    if (!r.ok) {
-      const errText = await r.text().catch(() => "");
-      console.error("sbUpsert failed:", r.status, errText);
+    // Step 1: try PATCH (update existing row)
+    const patchR = await fetch(
+      `${SB_URL}/rest/v1/meal_logs?day_key=eq.${encodeURIComponent(key)}`,
+      {
+        method: "PATCH",
+        headers: { ...SB_HDR, "Prefer": "return=representation" },
+        body: JSON.stringify({ data })
+      }
+    );
+
+    if (!patchR.ok) {
+      const e = await patchR.text().catch(() => "");
+      throw new Error(`PATCH ${patchR.status}: ${e}`);
     }
-    setSyncState(r.ok ? "synced" : "error");
-    return r.ok;
-  } catch(e) {
+
+    const updated = await patchR.json();
+
+    if (updated.length > 0) {
+      // Row existed and was updated ✓
+      setSyncState("synced");
+      return true;
+    }
+
+    // Step 2: no existing row → INSERT
+    const postR = await fetch(`${SB_URL}/rest/v1/meal_logs`, {
+      method: "POST",
+      headers: { ...SB_HDR, "Prefer": "return=minimal" },
+      body: JSON.stringify({ day_key: key, data })
+    });
+
+    if (!postR.ok) {
+      const e = await postR.text().catch(() => "");
+      throw new Error(`POST ${postR.status}: ${e}`);
+    }
+
+    setSyncState("synced");
+    return true;
+  } catch (e) {
     console.error("sbUpsert error:", e);
     setSyncState("error");
     return false;
