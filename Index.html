@@ -1,627 +1,935 @@
-import { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meal Tracker — Cholesterol Control</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-const G  = "#3B6D11";
-const GL = "#EAF3DE";
-const GM = "#C0DD97";
-const A  = "#854F0B";
-const AL = "#FAEEDA";
-const AM = "#FAC775";
+  :root {
+    --g:  #3B6D11; --gl: #EAF3DE; --gm: #C0DD97;
+    --a:  #854F0B; --al: #FAEEDA; --am: #FAC775;
+    --bl: #185FA5;
+    --bg:       #ffffff; --bg2: #f7f7f5; --bg3: #f0efe9;
+    --text:     #1a1a18; --text2: #6b6a65; --text3: #9b9a95;
+    --border:   rgba(0,0,0,0.10); --border2: rgba(0,0,0,0.18);
+    --radius:   10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow:   0 1px 4px rgba(0,0,0,0.06);
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252522; --bg3: #2e2e2a;
+      --text: #f0efe9; --text2: #a09f9a; --text3: #6a6965;
+      --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.18);
+      --gl: #1a2e10; --gm: #2a4a18;
+      --al: #2e1e08; --am: #5a3308;
+    }
+  }
+
+  html, body { height: 100%; background: var(--bg3); font-family: var(--font); color: var(--text); }
+
+  /* ── Layout ── */
+  .app {
+    max-width: 520px; margin: 0 auto;
+    background: var(--bg); min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  .app-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .header-icon {
+    width: 36px; height: 36px; border-radius: 10px; background: var(--g);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .header-icon svg { display: block; }
+  .header-title { font-size: 17px; font-weight: 600; color: var(--text); }
+  .header-sub   { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+  .content { flex: 1; padding: 16px 18px 40px; }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 8px;
+  }
+
+  /* ── Month tabs ── */
+  .month-strip {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .month-btn {
+    padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border2); background: var(--bg2);
+    color: var(--text2); transition: all 0.15s; white-space: nowrap;
+  }
+  .month-btn.active { background: var(--g); color: #fff; border-color: var(--g); }
+  .month-btn:hover:not(.active) { background: var(--bg3); }
+  .add-month-btn {
+    padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px dashed var(--border2); background: transparent;
+    color: var(--text2); transition: all 0.15s; white-space: nowrap;
+  }
+  .add-month-btn:hover { background: var(--bg2); }
+
+  /* ── Calendar ── */
+  .cal-header {
+    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px;
+  }
+  .cal-month-title { font-size: 17px; font-weight: 600; }
+  .cal-hint { font-size: 12px; color: var(--text2); }
+  .cal-legend {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2);
+  }
+  .dot { display: inline-block; border-radius: 50%; flex-shrink: 0; }
+  .cal-days-header {
+    display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px;
+  }
+  .cal-day-label { text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); padding: 3px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); transition: background 0.15s;
+    font-size: 13px; color: var(--text); padding: 2px;
+  }
+  .cal-cell.today { border: 2px solid var(--a); color: var(--a); font-weight: 600; }
+  .cal-cell.partial { background: var(--al); }
+  .cal-cell.complete { background: var(--gl); }
+  .cal-cell.empty { border: none; cursor: default; }
+  .cal-cell:hover:not(.empty) { filter: brightness(0.96); }
+  .cal-bar-wrap { width: 68%; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  .cal-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* ── How-to box ── */
+  .how-to {
+    margin-top: 18px; padding: 14px 16px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); font-size: 13px; color: var(--text2); line-height: 1.7;
+  }
+  .how-to strong { color: var(--text); font-weight: 600; }
+
+  /* ── Day view ── */
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: none; color: var(--g); font-size: 13px; font-weight: 500;
+    cursor: pointer; padding: 0; margin-bottom: 14px;
+  }
+  .day-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+
+  /* ── Check-in banner ── */
+  .checkin-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-radius: var(--radius-lg); margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+  .checkin-banner.logged { background: var(--gl); border-color: var(--gm); }
+  .checkin-banner.not-logged { background: var(--bg2); }
+  .checkin-left { display: flex; align-items: center; gap: 12px; }
+  .checkin-avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--g);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #fff; flex-shrink: 0;
+  }
+  .checkin-title { font-size: 13px; font-weight: 600; }
+  .checkin-sub   { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .login-btn {
+    padding: 9px 18px; background: var(--g); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+  }
+  .login-btn:hover { opacity: 0.88; }
+  .active-badge {
+    font-size: 11px; color: var(--g); font-weight: 600;
+    background: var(--gm); border-radius: 100px; padding: 4px 10px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-section { margin-bottom: 16px; }
+  .progress-row {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
+  }
+  .progress-label { font-size: 12px; color: var(--text2); }
+  .progress-count { font-size: 13px; font-weight: 600; }
+  .progress-track {
+    height: 6px; border-radius: 3px; background: var(--border); overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.35s ease; }
+  .progress-done-msg { font-size: 12px; color: var(--g); font-weight: 600; margin-top: 6px; }
+
+  /* ── Meals section header ── */
+  .meals-meta {
+    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;
+  }
+  .meals-hint { font-size: 11px; color: var(--text3); }
+
+  /* ── Meal row ── */
+  .meal-row {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--bg); margin-bottom: 10px; overflow: hidden;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .meal-row.checked { background: var(--gl); border-color: var(--gm); }
+
+  .meal-row-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .meal-row.checked .meal-row-header { border-bottom-color: var(--gm); }
+  .meal-row-left { display: flex; align-items: center; gap: 9px; }
+  .meal-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .meal-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .meal-time-badge {
+    font-size: 11px; color: var(--text2); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 100px; padding: 2px 8px;
+  }
+  .mark-done-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 100px; cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: all 0.15s; border: 1px solid;
+  }
+  .mark-done-btn.undone {
+    background: var(--bg); border-color: var(--border2); color: var(--text2);
+  }
+  .mark-done-btn.done {
+    background: var(--g); border-color: var(--g); color: #fff;
+  }
+  .mark-done-circle {
+    width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 9px; flex-shrink: 0;
+  }
+  .mark-done-btn.undone .mark-done-circle { border: 1.5px solid var(--border2); }
+  .mark-done-btn.done  .mark-done-circle  { background: rgba(255,255,255,0.3); color: #fff; }
+
+  .meal-row-body { padding: 12px 14px; }
+  .meal-note { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+  .meal-sel-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--text3); margin-bottom: 6px;
+  }
+  .meal-controls { display: flex; gap: 8px; align-items: flex-start; }
+  .meal-select {
+    flex: 1; font-size: 13px; padding: 8px 10px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius); outline: none; color: var(--text);
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .meal-select.dirty { border-color: var(--am); }
+  .save-btn {
+    padding: 8px 16px; font-size: 12px; font-weight: 600;
+    border-radius: var(--radius); border: none; cursor: default;
+    white-space: nowrap; transition: all 0.2s;
+  }
+  .save-btn.idle   { background: var(--bg2); color: var(--text3); }
+  .save-btn.dirty  { background: var(--a);   color: #fff; cursor: pointer; }
+  .save-btn.saving { background: var(--a);   color: #fff; opacity: 0.6; }
+  .save-btn.saved  { background: var(--g);   color: #fff; }
+  .unsaved-hint { font-size: 11px; color: var(--a); margin-top: 7px; }
+
+  /* custom option add */
+  .custom-add-row { display: flex; gap: 6px; margin-top: 8px; }
+  .custom-input {
+    flex: 1; font-size: 13px; padding: 7px 10px;
+    border: 1px solid var(--g); border-radius: var(--radius);
+    outline: none; background: var(--bg); color: var(--text);
+  }
+  .custom-confirm-btn {
+    padding: 7px 12px; background: var(--g); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .custom-cancel-btn {
+    padding: 7px 8px; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 12px; cursor: pointer; color: var(--text2);
+  }
+
+  /* ── Avoid panel ── */
+  .avoid-panel {
+    margin-top: 18px; padding: 14px 16px;
+    background: var(--al); border: 1px solid var(--am);
+    border-radius: var(--radius-lg);
+  }
+  .avoid-heading {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .avoid-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--a);
+  }
+  .avoid-text { font-size: 13px; color: #633806; line-height: 1.6; }
+
+  /* ── Modal overlay ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal {
+    background: var(--bg); border-radius: var(--radius-xl);
+    border: 1px solid var(--border); padding: 24px 20px;
+    width: 100%; max-width: 320px;
+  }
+  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .modal p  { font-size: 12px; color: var(--text2); margin-bottom: 18px; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .modal-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .modal-field select,
+  .modal-field input {
+    width: 100%; padding: 9px; font-size: 13px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius); outline: none; color: var(--text);
+  }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-cancel {
+    flex: 1; padding: 10px; font-size: 13px; font-weight: 500; cursor: pointer;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius); color: var(--text2);
+  }
+  .modal-add {
+    flex: 2; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+    background: var(--g); color: #fff; border: none; border-radius: var(--radius);
+  }
+
+  /* ── Utilities ── */
+  .hidden { display: none !important; }
+  select, input, button { font-family: var(--font); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.8"/>
+        <path d="M7 10l2.5 2.5L14 7" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Meal Tracker</div>
+      <div class="header-sub">Cholesterol control diet plan</div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="content">
+
+    <!-- Month strip -->
+    <div class="section-label">Month</div>
+    <div class="month-strip" id="month-strip">
+      <button class="add-month-btn" onclick="openAddMonth()">+ Add month</button>
+    </div>
+
+    <!-- Calendar view -->
+    <div id="cal-view">
+      <div class="cal-header">
+        <span class="cal-month-title" id="cal-month-title"></span>
+        <span class="cal-hint">Tap a day to log meals</span>
+      </div>
+      <div class="cal-legend">
+        <div class="legend-item"><span class="dot" style="width:8px;height:8px;background:var(--g)"></span>All done</div>
+        <div class="legend-item"><span class="dot" style="width:8px;height:8px;background:var(--a)"></span>Partial</div>
+        <div class="legend-item"><span class="dot" style="width:8px;height:8px;background:var(--bl)"></span>Logged in</div>
+        <div class="legend-item"><span class="dot" style="width:8px;height:8px;border:1px solid var(--border2)"></span>Not started</div>
+      </div>
+      <div class="cal-days-header">
+        <div class="cal-day-label">Su</div><div class="cal-day-label">Mo</div>
+        <div class="cal-day-label">Tu</div><div class="cal-day-label">We</div>
+        <div class="cal-day-label">Th</div><div class="cal-day-label">Fr</div>
+        <div class="cal-day-label">Sa</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="how-to">
+        <strong>How to use:</strong> Tap a day on the calendar →
+        press <strong>Log In</strong> to check in →
+        pick your meal from the dropdown →
+        press <strong>Save</strong> to record it →
+        tap <strong>Mark done</strong> after eating.
+      </div>
+    </div>
+
+    <!-- Day view -->
+    <div id="day-view" class="hidden">
+      <button class="back-btn" onclick="closeDay()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 2L4 7l5 5" stroke="var(--g)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="back-label">Back</span>
+      </button>
+      <div class="day-title" id="day-title"></div>
+
+      <!-- Check-in banner -->
+      <div id="checkin-banner" class="checkin-banner not-logged">
+        <div class="checkin-left">
+          <div class="checkin-avatar" id="checkin-avatar">—</div>
+          <div>
+            <div class="checkin-title" id="checkin-title">Start tracking this day</div>
+            <div class="checkin-sub"  id="checkin-sub">Tap Log In to begin your meal log</div>
+          </div>
+        </div>
+        <button class="login-btn" id="login-btn" onclick="doLogin()">Log In</button>
+        <span class="active-badge hidden" id="active-badge">Active</span>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-section">
+        <div class="progress-row">
+          <span class="progress-label">Daily progress</span>
+          <span class="progress-count" id="progress-count">0 / 7 meals done</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%;background:var(--a)"></div>
+        </div>
+        <div class="progress-done-msg hidden" id="progress-done-msg">All meals completed!</div>
+      </div>
+
+      <!-- Meals list -->
+      <div class="meals-meta">
+        <div class="section-label" style="margin-bottom:0">Meal log — 7 sections</div>
+        <span class="meals-hint">Select · Save · Mark done</span>
+      </div>
+      <div id="meal-rows"></div>
+
+      <!-- Avoid panel -->
+      <div class="avoid-panel">
+        <div class="avoid-heading">
+          <span class="dot" style="width:6px;height:6px;background:var(--a)"></span>
+          <span class="avoid-label">Avoid today</span>
+        </div>
+        <p class="avoid-text">
+          Packaged cakes, biscuits, fast foods, fried foods, butter, cheese, cream, red meat. Limit salt.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Add month modal -->
+<div class="modal-backdrop hidden" id="modal">
+  <div class="modal">
+    <h3>Add month</h3>
+    <p>Track meals for any month</p>
+    <div class="modal-grid">
+      <div class="modal-field">
+        <label>Month</label>
+        <select id="new-month">
+          <option value="0">January</option><option value="1">February</option>
+          <option value="2">March</option><option value="3">April</option>
+          <option value="4">May</option><option value="5">June</option>
+          <option value="6">July</option><option value="7">August</option>
+          <option value="8">September</option><option value="9">October</option>
+          <option value="10">November</option><option value="11">December</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Year</label>
+        <input type="number" id="new-year" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-add"    onclick="addMonth()"  id="modal-add-btn">Add month</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const MONTH_NAMES = ["January","February","March","April","May","June",
+                     "July","August","September","October","November","December"];
 
 const MEALS = [
-  { id: "pre_breakfast", time: "5–7 AM",   label: "Pre-breakfast", color: "#185FA5",
-    note: "Aids lipid reduction",
-    opts: ["Warm water + 1 tsp fenugreek seeds", "Warm lemon water", "Warm water + chia seeds", "Warm water + amla juice"] },
-  { id: "breakfast",     time: "8–9 AM",   label: "Breakfast",     color: "#3B6D11",
-    note: "Steam only · No oil · Lowers LDL by 5–10%",
-    opts: ["Oats / Barley porridge", "Rava idli + Sambar (2 nos)", "Oats upma", "Whole wheat dosa + Sambar"] },
-  { id: "mid_morning",   time: "10–11 AM", label: "Mid-morning",   color: "#0F6E56",
-    note: "Healthy fat · Boosts HDL",
-    opts: ["Buttermilk (low fat) + handful almonds", "Handful almonds / walnuts", "Coconut water + nuts", "Low fat buttermilk"] },
-  { id: "lunch",         time: "1–2 PM",   label: "Lunch",         color: "#534AB7",
-    note: "Fiber-rich · Avoid white rice",
-    opts: ["Brown rice (1 cup) + Dal + Veg Poriyal", "Chapati + Dal + Vegetables", "Millet rice + Sambar", "Brown rice + Fish curry (small)"] },
-  { id: "snack",         time: "4–5 PM",   label: "Snack",         color: "#BA7517",
-    note: "Soluble fiber · Blocks cholesterol absorption",
-    opts: ["Apple / Guava + Green tea", "Avocado + Green tea", "Mixed fruits + Green tea", "Roasted nuts + Green tea"] },
-  { id: "dinner",        time: "8–9 PM",   label: "Dinner",        color: "#993556",
-    note: "Easy to digest · Light meal",
-    opts: ["Ragi dosa (2) + Veg Kootu", "Ragi dosa (2) + Soya curry", "Ragi dosa (2) + Fish (grilled)", "Wheat dosa + Veg Kootu"] },
-  { id: "bedtime",       time: "Bedtime",  label: "Bedtime",       color: "#534AB7",
-    note: "Anti-inflammatory",
-    opts: ["Warm turmeric milk", "Warm turmeric + pepper milk", "Warm ginger + turmeric milk", "Warm ashwagandha milk"] },
+  { id:"pre_breakfast", time:"5–7 AM",   label:"Pre-breakfast", color:"#185FA5",
+    note:"Aids lipid reduction",
+    opts:["Warm water + 1 tsp fenugreek seeds","Warm lemon water","Warm water + chia seeds","Warm water + amla juice"] },
+  { id:"breakfast",     time:"8–9 AM",   label:"Breakfast",     color:"#3B6D11",
+    note:"Steam only · No oil · Lowers LDL by 5–10%",
+    opts:["Oats / Barley porridge","Rava idli + Sambar (2 nos)","Oats upma","Whole wheat dosa + Sambar"] },
+  { id:"mid_morning",   time:"10–11 AM", label:"Mid-morning",   color:"#0F6E56",
+    note:"Healthy fat · Boosts HDL",
+    opts:["Buttermilk (low fat) + handful almonds","Handful almonds / walnuts","Coconut water + nuts","Low fat buttermilk"] },
+  { id:"lunch",         time:"1–2 PM",   label:"Lunch",         color:"#534AB7",
+    note:"Fiber-rich · Avoid white rice",
+    opts:["Brown rice (1 cup) + Dal + Veg Poriyal","Chapati + Dal + Vegetables","Millet rice + Sambar","Brown rice + Fish curry (small)"] },
+  { id:"snack",         time:"4–5 PM",   label:"Snack",         color:"#BA7517",
+    note:"Soluble fiber · Blocks cholesterol absorption",
+    opts:["Apple / Guava + Green tea","Avocado + Green tea","Mixed fruits + Green tea","Roasted nuts + Green tea"] },
+  { id:"dinner",        time:"8–9 PM",   label:"Dinner",        color:"#993556",
+    note:"Easy to digest · Light meal",
+    opts:["Ragi dosa (2) + Veg Kootu","Ragi dosa (2) + Soya curry","Ragi dosa (2) + Fish (grilled)","Wheat dosa + Veg Kootu"] },
+  { id:"bedtime",       time:"Bedtime",  label:"Bedtime",       color:"#534AB7",
+    note:"Anti-inflammatory",
+    opts:["Warm turmeric milk","Warm turmeric + pepper milk","Warm ginger + turmeric milk","Warm ashwagandha milk"] },
 ];
 
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DAYS_ABBR   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+// ── Storage ──────────────────────────────────────────────────────────────────
+function load(k, def) {
+  try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-const daysIn   = (y, m) => new Date(y, m + 1, 0).getDate();
-const firstDay = (y, m) => new Date(y, m, 1).getDay();
-const mkMId    = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
-const mkDKey   = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+// ── State ─────────────────────────────────────────────────────────────────────
+const now = new Date();
+const todayKey = mkDKey(now.getFullYear(), now.getMonth(), now.getDate());
 
-async function sg(k)   { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch { return null; } }
-async function ss(k,v) { try { await window.storage.set(k, JSON.stringify(v)); } catch {} }
+let months    = load("chol-months", []);
+let activeId  = null;
+let activeDay = null;
+let mealOpts  = load("chol-opts", Object.fromEntries(MEALS.map(m => [m.id, [...m.opts]])));
 
+// Ensure base options always present
+MEALS.forEach(m => {
+  if (!mealOpts[m.id]) mealOpts[m.id] = [...m.opts];
+  m.opts.forEach(o => { if (!mealOpts[m.id].includes(o)) mealOpts[m.id].unshift(o); });
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function mkMId(y,m)  { return `${y}-${String(m+1).padStart(2,"0")}`; }
+function mkDKey(y,m,d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+function daysIn(y,m) { return new Date(y,m+1,0).getDate(); }
+function firstDay(y,m) { return new Date(y,m,1).getDay(); }
+function loadDay(dk) { return load(`cd-${dk}`, {}); }
+function saveDay(dk,data) { save(`cd-${dk}`, data); }
 function fmtTime(iso) {
-  try { return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }); }
+  try { return new Date(iso).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}); }
   catch { return ""; }
 }
+function fmtDate(dk) {
+  const [y,mo,d] = dk.split("-").map(Number);
+  return new Date(y,mo-1,d).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+function getActiveMonth() { return months.find(m => m.id === activeId); }
 
-function Dot({ color, size = 8 }) {
-  return <span style={{ display:"inline-block", width:size, height:size, borderRadius:"50%", background:color, flexShrink:0 }} />;
+// ── Init ──────────────────────────────────────────────────────────────────────
+(function init() {
+  if (!months.length) {
+    const def = {
+      id: mkMId(now.getFullYear(), now.getMonth()),
+      year: now.getFullYear(), month: now.getMonth(),
+      label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`,
+    };
+    months = [def];
+    save("chol-months", months);
+  }
+  activeId = months[months.length-1].id;
+
+  // Preset new-month modal defaults
+  document.getElementById("new-month").value = now.getMonth();
+  document.getElementById("new-year").value  = now.getFullYear();
+
+  renderMonthTabs();
+  renderCalendar();
+})();
+
+// ── Month tabs ────────────────────────────────────────────────────────────────
+function renderMonthTabs() {
+  const strip = document.getElementById("month-strip");
+  const addBtn = strip.querySelector(".add-month-btn");
+  // remove old tab buttons
+  strip.querySelectorAll(".month-btn").forEach(b => b.remove());
+
+  months.forEach(m => {
+    const btn = document.createElement("button");
+    btn.className = "month-btn" + (m.id === activeId ? " active" : "");
+    btn.textContent = m.label;
+    btn.onclick = () => { activeId = m.id; activeDay = null; renderMonthTabs(); showCal(); };
+    strip.insertBefore(btn, addBtn);
+  });
 }
 
-// ── Meal row ──────────────────────────────────────────────────────────────────
-function MealRow({ meal, data, opts, onSave, onCheck, onAddOpt }) {
-  const savedSel = data?.selected || opts[0];
-  const [pending,   setPending]   = useState(savedSel);
-  const [saveState, setSaveState] = useState("idle");
-  const [adding,    setAdding]    = useState(false);
-  const [newOpt,    setNewOpt]    = useState("");
-
-  const checked = data?.checked || false;
-
-  useEffect(() => {
-    setPending(data?.selected || opts[0]);
-    setSaveState("idle");
-  }, [data?.selected]);
-
-  function handleDropdown(e) {
-    const v = e.target.value;
-    if (v === "__add__") { setAdding(true); return; }
-    setPending(v);
-    setSaveState(v !== (data?.selected || opts[0]) ? "dirty" : "idle");
-  }
-
-  async function handleSave() {
-    setSaveState("saving");
-    await onSave(pending);
-    setSaveState("saved");
-    setTimeout(() => setSaveState("idle"), 2200);
-  }
-
-  function commitCustom() {
-    if (!newOpt.trim()) return;
-    onAddOpt(newOpt.trim());
-    setPending(newOpt.trim());
-    setSaveState("dirty");
-    setNewOpt(""); setAdding(false);
-  }
-
-  const isDirty = saveState === "dirty";
-  const isSaved = saveState === "saved";
-
-  return (
-    <div style={{
-      borderRadius:"var(--border-radius-lg)",
-      border:`0.5px solid ${checked ? GM : "var(--color-border-tertiary)"}`,
-      background: checked ? GL : "var(--color-background-primary)",
-      marginBottom:10, overflow:"hidden",
-      transition:"background 0.25s, border-color 0.25s",
-    }}>
-      {/* Header */}
-      <div style={{
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"10px 14px",
-        background:"var(--color-background-secondary)",
-        borderBottom:`0.5px solid ${checked ? GM : "var(--color-border-tertiary)"}`,
-      }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <Dot color={meal.color} size={9} />
-          <span style={{ fontSize:13, fontWeight:500, color:"var(--color-text-primary)" }}>{meal.label}</span>
-          <span style={{
-            fontSize:11, color:"var(--color-text-secondary)",
-            background:"var(--color-background-primary)",
-            border:"0.5px solid var(--color-border-tertiary)",
-            borderRadius:100, padding:"2px 8px",
-          }}>{meal.time}</span>
-        </div>
-
-        {/* Mark done */}
-        <button onClick={() => onCheck(!checked)} style={{
-          display:"flex", alignItems:"center", gap:5,
-          padding:"5px 12px", borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500,
-          background: checked ? G : "var(--color-background-primary)",
-          color: checked ? "#fff" : "var(--color-text-secondary)",
-          border:`0.5px solid ${checked ? G : "var(--color-border-secondary)"}`,
-          transition:"all 0.15s",
-        }}>
-          <span style={{
-            display:"inline-flex", alignItems:"center", justifyContent:"center",
-            width:14, height:14, borderRadius:"50%",
-            border: checked ? "none" : "1.5px solid var(--color-border-secondary)",
-            background: checked ? "rgba(255,255,255,0.3)" : "transparent",
-            fontSize:9, color:"#fff",
-          }}>{checked ? "✓" : ""}</span>
-          {checked ? "Done" : "Mark done"}
-        </button>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding:"12px 14px" }}>
-        <p style={{ margin:"0 0 10px", fontSize:11, color:"var(--color-text-secondary)", lineHeight:1.4 }}>
-          {meal.note}
-        </p>
-        <div style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.04em" }}>
-          Meal selection
-        </div>
-        <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
-          <select value={pending} onChange={handleDropdown} style={{
-            flex:1, fontSize:13, padding:"8px 10px",
-            background:"var(--color-background-secondary)",
-            border:`0.5px solid ${isDirty ? AM : "var(--color-border-secondary)"}`,
-            borderRadius:"var(--border-radius-md)", outline:"none",
-            color:"var(--color-text-primary)", cursor:"pointer",
-            transition:"border-color 0.15s",
-          }}>
-            {opts.map(o => <option key={o} value={o}>{o}</option>)}
-            <option value="__add__">+ Add custom option...</option>
-          </select>
-
-          <button onClick={handleSave} style={{
-            padding:"8px 16px", fontSize:12, fontWeight:500,
-            borderRadius:"var(--border-radius-md)", border:"none",
-            whiteSpace:"nowrap", cursor: isDirty ? "pointer" : "default",
-            transition:"all 0.2s",
-            background: isSaved ? G : isDirty ? A : "var(--color-background-secondary)",
-            color: (isSaved || isDirty) ? "#fff" : "var(--color-text-secondary)",
-          }}>
-            {isSaved ? "✓ Saved" : isDirty ? "Save" : "Saved"}
-          </button>
-        </div>
-
-        {adding && (
-          <div style={{ display:"flex", gap:6, marginTop:8 }}>
-            <input autoFocus value={newOpt} onChange={e => setNewOpt(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") commitCustom(); if (e.key === "Escape") { setAdding(false); setNewOpt(""); } }}
-              placeholder="Type your custom meal..."
-              style={{
-                flex:1, fontSize:13, padding:"7px 10px",
-                border:`0.5px solid ${G}`, borderRadius:"var(--border-radius-md)",
-                outline:"none", background:"var(--color-background-primary)", color:"var(--color-text-primary)",
-              }} />
-            <button onClick={commitCustom} style={{
-              padding:"7px 12px", background:G, color:"#fff",
-              border:"none", borderRadius:"var(--border-radius-md)", fontSize:12, fontWeight:500, cursor:"pointer",
-            }}>Add</button>
-            <button onClick={() => { setAdding(false); setNewOpt(""); }} style={{
-              padding:"7px 8px", background:"var(--color-background-secondary)",
-              border:"0.5px solid var(--color-border-tertiary)",
-              borderRadius:"var(--border-radius-md)", fontSize:12, cursor:"pointer", color:"var(--color-text-secondary)",
-            }}>✕</button>
-          </div>
-        )}
-
-        {isDirty && (
-          <p style={{ margin:"7px 0 0", fontSize:11, color:A }}>
-            Unsaved changes — tap Save to confirm.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({ year, month, dayData, onSelect, todayKey }) {
+// ── Calendar render ───────────────────────────────────────────────────────────
+function renderCalendar() {
+  const am = getActiveMonth();
+  if (!am) return;
+  document.getElementById("cal-month-title").textContent = am.label;
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  const { year, month } = am;
   const days  = daysIn(year, month);
   const start = firstDay(year, month);
-  const cells = Array(start).fill(null).concat(Array.from({ length:days }, (_,i) => i+1));
 
-  function info(d) {
-    const dd      = dayData[mkDKey(year, month, d)];
-    const checked = dd ? MEALS.filter(m => dd[m.id]?.checked).length : 0;
-    return { pct: checked / MEALS.length, loggedIn: !!dd?._loggedIn };
+  // blank spacers
+  for (let i = 0; i < start; i++) {
+    const sp = document.createElement("div");
+    sp.className = "cal-cell empty";
+    grid.appendChild(sp);
   }
 
-  return (
-    <div>
-      <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap" }}>
-        {[["All done",G],["Partial",A],["Logged in","#185FA5"],["Not started","var(--color-border-secondary)"]].map(([label,color]) => (
-          <div key={label} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--color-text-secondary)" }}>
-            <Dot color={color} size={8} />{label}
-          </div>
-        ))}
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:4 }}>
-        {DAYS_ABBR.map(d => (
-          <div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", padding:"3px 0" }}>{d}</div>
-        ))}
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
-        {cells.map((d,i) => {
-          if (!d) return <div key={`_${i}`} />;
-          const k   = mkDKey(year, month, d);
-          const { pct, loggedIn } = info(d);
-          const isT = k === todayKey;
-          return (
-            <button key={k} onClick={() => onSelect(k)} style={{
-              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-              gap:4, padding:"9px 2px",
-              background: pct >= 1 ? GL : pct > 0 ? AL : "var(--color-background-primary)",
-              border: isT ? `2px solid ${A}` : "0.5px solid var(--color-border-tertiary)",
-              borderRadius:"var(--border-radius-md)", cursor:"pointer", transition:"background 0.15s",
-            }}>
-              <span style={{ fontSize:13, fontWeight:isT?500:400, color:isT?A:"var(--color-text-primary)" }}>{d}</span>
-              {pct > 0 && (
-                <div style={{ width:"68%", height:3, borderRadius:2, background:"var(--color-border-tertiary)", overflow:"hidden" }}>
-                  <div style={{ width:`${Math.round(pct*100)}%`, height:"100%", background:pct>=1?G:A, borderRadius:2 }} />
-                </div>
-              )}
-              {loggedIn && pct === 0 && <Dot color="#185FA5" size={5} />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+  for (let d = 1; d <= days; d++) {
+    const dk   = mkDKey(year, month, d);
+    const data = loadDay(dk);
+    const checked = MEALS.filter(m => data[m.id]?.checked).length;
+    const pct     = checked / MEALS.length;
+    const loggedIn = !!data._loggedIn;
+    const isToday  = dk === todayKey;
+
+    const cell = document.createElement("button");
+    cell.className = "cal-cell" +
+      (isToday ? " today" : "") +
+      (pct >= 1 ? " complete" : pct > 0 ? " partial" : "");
+    cell.onclick = () => openDay(dk);
+
+    // Day number
+    const num = document.createElement("span");
+    num.textContent = d;
+    cell.appendChild(num);
+
+    // Progress bar
+    if (pct > 0) {
+      const wrap = document.createElement("div");
+      wrap.className = "cal-bar-wrap";
+      const bar = document.createElement("div");
+      bar.className = "cal-bar";
+      bar.style.width = `${Math.round(pct*100)}%`;
+      bar.style.background = pct >= 1 ? "var(--g)" : "var(--a)";
+      wrap.appendChild(bar);
+      cell.appendChild(wrap);
+    }
+
+    // Logged-in dot (only when no meals yet)
+    if (loggedIn && pct === 0) {
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.cssText = "width:5px;height:5px;background:var(--bl)";
+      cell.appendChild(dot);
+    }
+
+    grid.appendChild(cell);
+  }
 }
 
-// ── Check-in banner ───────────────────────────────────────────────────────────
-function CheckInBanner({ loggedIn, loginTime, onCheckIn }) {
-  return loggedIn ? (
-    <div style={{
-      display:"flex", alignItems:"center", justifyContent:"space-between",
-      padding:"12px 16px",
-      background:GL, border:`0.5px solid ${GM}`,
-      borderRadius:"var(--border-radius-lg)", marginBottom:14,
-    }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{
-          width:32, height:32, borderRadius:"50%", background:G,
-          display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:14, color:"#fff", fontWeight:500, flexShrink:0,
-        }}>✓</div>
-        <div>
-          <div style={{ fontSize:13, fontWeight:500, color:G }}>Day logged in</div>
-          <div style={{ fontSize:11, color:"var(--color-text-secondary)", marginTop:1 }}>Checked in at {loginTime}</div>
-        </div>
-      </div>
-      <span style={{
-        fontSize:11, color:G, fontWeight:500,
-        background:GM, borderRadius:100, padding:"4px 10px",
-      }}>Active</span>
-    </div>
-  ) : (
-    <div style={{
-      display:"flex", alignItems:"center", justifyContent:"space-between",
-      padding:"14px 16px",
-      background:"var(--color-background-secondary)",
-      border:"0.5px solid var(--color-border-tertiary)",
-      borderRadius:"var(--border-radius-lg)", marginBottom:14,
-    }}>
-      <div>
-        <div style={{ fontSize:13, fontWeight:500, color:"var(--color-text-primary)" }}>Start tracking this day</div>
-        <div style={{ fontSize:11, color:"var(--color-text-secondary)", marginTop:2 }}>
-          Tap Log In to begin your meal log
-        </div>
-      </div>
-      <button onClick={onCheckIn} style={{
-        padding:"9px 20px", background:G, color:"#fff",
-        border:"none", borderRadius:"var(--border-radius-md)",
-        fontSize:13, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
-      }}>Log In</button>
-    </div>
-  );
+function showCal() {
+  document.getElementById("cal-view").classList.remove("hidden");
+  document.getElementById("day-view").classList.add("hidden");
+  document.getElementById("cal-month-title").textContent = (getActiveMonth()||{}).label || "";
+  renderCalendar();
 }
 
-// ── Progress bar ──────────────────────────────────────────────────────────────
-function ProgressBar({ checked, total }) {
-  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
-  return (
-    <div style={{ marginBottom:16 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
-        <span style={{ fontSize:12, color:"var(--color-text-secondary)" }}>Daily progress</span>
-        <span style={{ fontSize:13, fontWeight:500, color:pct===100?G:"var(--color-text-primary)" }}>
-          {checked} / {total} meals done
-        </span>
-      </div>
-      <div style={{ height:6, borderRadius:3, background:"var(--color-border-tertiary)", overflow:"hidden" }}>
-        <div style={{ height:"100%", borderRadius:3, width:`${pct}%`, background:pct===100?G:A, transition:"width 0.3s ease" }} />
-      </div>
-      {pct === 100 && (
-        <p style={{ margin:"6px 0 0", fontSize:12, color:G, fontWeight:500 }}>All meals completed!</p>
-      )}
-    </div>
-  );
+// ── Day view ──────────────────────────────────────────────────────────────────
+function openDay(dk) {
+  activeDay = dk;
+  document.getElementById("cal-view").classList.add("hidden");
+  document.getElementById("day-view").classList.remove("hidden");
+
+  const am = getActiveMonth();
+  document.getElementById("back-label").textContent = `Back to ${am ? am.label : ""}`;
+  document.getElementById("day-title").textContent = fmtDate(dk);
+
+  renderCheckin();
+  renderProgress();
+  renderMeals();
+}
+
+function closeDay() {
+  activeDay = null;
+  renderCalendar();
+  showCal();
+}
+
+// ── Check-in ──────────────────────────────────────────────────────────────────
+function renderCheckin() {
+  const data     = loadDay(activeDay);
+  const loggedIn = !!data._loggedIn;
+  const banner   = document.getElementById("checkin-banner");
+  const avatar   = document.getElementById("checkin-avatar");
+  const title    = document.getElementById("checkin-title");
+  const sub      = document.getElementById("checkin-sub");
+  const loginBtn = document.getElementById("login-btn");
+  const badge    = document.getElementById("active-badge");
+
+  if (loggedIn) {
+    banner.classList.replace("not-logged","logged");
+    avatar.textContent = "✓";
+    title.textContent = "Day logged in";
+    title.style.color = "var(--g)";
+    sub.textContent = `Checked in at ${fmtTime(data._loginTime)}`;
+    loginBtn.classList.add("hidden");
+    badge.classList.remove("hidden");
+  } else {
+    banner.classList.replace("logged","not-logged");
+    avatar.textContent = "—";
+    title.textContent = "Start tracking this day";
+    title.style.color = "";
+    sub.textContent = "Tap Log In to begin your meal log";
+    loginBtn.classList.remove("hidden");
+    badge.classList.add("hidden");
+  }
+}
+
+function doLogin() {
+  if (!activeDay) return;
+  const data = loadDay(activeDay);
+  data._loggedIn  = true;
+  data._loginTime = new Date().toISOString();
+  saveDay(activeDay, data);
+  renderCheckin();
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function renderProgress() {
+  const data    = loadDay(activeDay);
+  const checked = MEALS.filter(m => data[m.id]?.checked).length;
+  const total   = MEALS.length;
+  const pct     = Math.round((checked/total)*100);
+  document.getElementById("progress-count").textContent = `${checked} / ${total} meals done`;
+  document.getElementById("progress-count").style.color = pct===100 ? "var(--g)" : "";
+  document.getElementById("progress-fill").style.width  = `${pct}%`;
+  document.getElementById("progress-fill").style.background = pct===100 ? "var(--g)" : "var(--a)";
+  const doneMsg = document.getElementById("progress-done-msg");
+  pct===100 ? doneMsg.classList.remove("hidden") : doneMsg.classList.add("hidden");
+}
+
+// ── Meal rows ─────────────────────────────────────────────────────────────────
+function renderMeals() {
+  const container = document.getElementById("meal-rows");
+  container.innerHTML = "";
+  const data = loadDay(activeDay);
+
+  MEALS.forEach(meal => {
+    const md      = data[meal.id] || {};
+    const checked = !!md.checked;
+    const opts    = mealOpts[meal.id] || meal.opts;
+    const sel     = md.selected || opts[0];
+
+    // Row wrapper
+    const row = document.createElement("div");
+    row.className = "meal-row" + (checked ? " checked" : "");
+    row.id = `meal-row-${meal.id}`;
+
+    // ── Header ──
+    const hdr = document.createElement("div");
+    hdr.className = "meal-row-header";
+
+    const left = document.createElement("div");
+    left.className = "meal-row-left";
+
+    const dot = document.createElement("span");
+    dot.className = "meal-dot";
+    dot.style.background = meal.color;
+
+    const name = document.createElement("span");
+    name.className = "meal-name";
+    name.textContent = meal.label;
+
+    const timeBadge = document.createElement("span");
+    timeBadge.className = "meal-time-badge";
+    timeBadge.textContent = meal.time;
+
+    left.append(dot, name, timeBadge);
+
+    // Mark done button
+    const mdBtn = document.createElement("button");
+    mdBtn.className = "mark-done-btn " + (checked ? "done" : "undone");
+    mdBtn.id = `md-btn-${meal.id}`;
+    const circle = document.createElement("span");
+    circle.className = "mark-done-circle";
+    circle.textContent = checked ? "✓" : "";
+    const mdLabel = document.createElement("span");
+    mdLabel.textContent = checked ? "Done" : "Mark done";
+    mdBtn.append(circle, mdLabel);
+    mdBtn.onclick = () => toggleDone(meal.id);
+
+    hdr.append(left, mdBtn);
+
+    // ── Body ──
+    const body = document.createElement("div");
+    body.className = "meal-row-body";
+
+    const noteEl = document.createElement("p");
+    noteEl.className = "meal-note";
+    noteEl.textContent = meal.note;
+
+    const selLabel = document.createElement("div");
+    selLabel.className = "meal-sel-label";
+    selLabel.textContent = "Meal selection";
+
+    // Controls row
+    const controls = document.createElement("div");
+    controls.className = "meal-controls";
+
+    const select = document.createElement("select");
+    select.className = "meal-select";
+    select.id = `sel-${meal.id}`;
+
+    opts.forEach(o => {
+      const opt = document.createElement("option");
+      opt.value = o; opt.textContent = o;
+      if (o === sel) opt.selected = true;
+      select.appendChild(opt);
+    });
+    const addOpt = document.createElement("option");
+    addOpt.value = "__add__"; addOpt.textContent = "+ Add custom option...";
+    select.appendChild(addOpt);
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "save-btn idle";
+    saveBtn.id = `save-btn-${meal.id}`;
+    saveBtn.textContent = "Saved";
+    saveBtn.onclick = () => doSave(meal.id, saveBtn, select);
+
+    select.onchange = () => {
+      if (select.value === "__add__") {
+        select.value = sel;
+        showCustomAdd(meal.id, select, saveBtn);
+        return;
+      }
+      const changed = select.value !== (loadDay(activeDay)[meal.id]?.selected || opts[0]);
+      setSaveBtnState(saveBtn, changed ? "dirty" : "idle");
+    };
+
+    controls.append(select, saveBtn);
+
+    // Hint
+    const hint = document.createElement("p");
+    hint.className = "unsaved-hint hidden";
+    hint.id = `hint-${meal.id}`;
+    hint.textContent = "Unsaved changes — tap Save to confirm.";
+
+    // Custom add row (hidden by default)
+    const customRow = document.createElement("div");
+    customRow.className = "custom-add-row hidden";
+    customRow.id = `custom-${meal.id}`;
+    const customInput = document.createElement("input");
+    customInput.type = "text"; customInput.className = "custom-input";
+    customInput.placeholder = "Type your custom meal...";
+    customInput.onkeydown = e => {
+      if (e.key==="Enter") commitCustom(meal.id, customInput, select, saveBtn, customRow, hint);
+      if (e.key==="Escape") { customRow.classList.add("hidden"); customInput.value=""; }
+    };
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "custom-confirm-btn"; confirmBtn.textContent = "Add";
+    confirmBtn.onclick = () => commitCustom(meal.id, customInput, select, saveBtn, customRow, hint);
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "custom-cancel-btn"; cancelBtn.textContent = "✕";
+    cancelBtn.onclick = () => { customRow.classList.add("hidden"); customInput.value=""; };
+    customRow.append(customInput, confirmBtn, cancelBtn);
+
+    body.append(noteEl, selLabel, controls, hint, customRow);
+    row.append(hdr, body);
+    container.appendChild(row);
+  });
+}
+
+function setSaveBtnState(btn, state) {
+  btn.className = `save-btn ${state}`;
+  const mealId = btn.id.replace("save-btn-","");
+  const hint   = document.getElementById(`hint-${mealId}`);
+  if (state==="dirty")  { btn.textContent = "Save";     if(hint) hint.classList.remove("hidden"); }
+  if (state==="saving") { btn.textContent = "Saving..."; if(hint) hint.classList.add("hidden"); }
+  if (state==="saved")  { btn.textContent = "✓ Saved";   if(hint) hint.classList.add("hidden"); }
+  if (state==="idle")   { btn.textContent = "Saved";     if(hint) hint.classList.add("hidden"); }
+}
+
+async function doSave(mealId, saveBtn, select) {
+  if (!saveBtn.classList.contains("dirty")) return;
+  setSaveBtnState(saveBtn, "saving");
+  const data = loadDay(activeDay);
+  const opts = mealOpts[mealId] || MEALS.find(m=>m.id===mealId).opts;
+  if (!data[mealId]) data[mealId] = { selected: opts[0], checked: false };
+  data[mealId].selected = select.value;
+  saveDay(activeDay, data);
+  await new Promise(r => setTimeout(r, 350));
+  setSaveBtnState(saveBtn, "saved");
+  setTimeout(() => setSaveBtnState(saveBtn, "idle"), 2200);
+}
+
+function toggleDone(mealId) {
+  const data = loadDay(activeDay);
+  const opts = mealOpts[mealId] || MEALS.find(m=>m.id===mealId).opts;
+  if (!data[mealId]) data[mealId] = { selected: opts[0], checked: false };
+  data[mealId].checked = !data[mealId].checked;
+  saveDay(activeDay, data);
+
+  // Update row class
+  const row   = document.getElementById(`meal-row-${mealId}`);
+  const btn   = document.getElementById(`md-btn-${mealId}`);
+  const checked = data[mealId].checked;
+  row.classList.toggle("checked", checked);
+  btn.className = "mark-done-btn " + (checked ? "done" : "undone");
+  btn.querySelector(".mark-done-circle").textContent = checked ? "✓" : "";
+  btn.querySelector("span:last-child").textContent = checked ? "Done" : "Mark done";
+  renderProgress();
+}
+
+function showCustomAdd(mealId, select, saveBtn) {
+  const row = document.getElementById(`custom-${mealId}`);
+  row.classList.remove("hidden");
+  row.querySelector("input").focus();
+}
+
+function commitCustom(mealId, input, select, saveBtn, customRow, hint) {
+  const val = input.value.trim();
+  if (!val) return;
+
+  // Add to opts
+  if (!mealOpts[mealId]) mealOpts[mealId] = [];
+  if (!mealOpts[mealId].includes(val)) mealOpts[mealId].push(val);
+  save("chol-opts", mealOpts);
+
+  // Add to select
+  const opt = document.createElement("option");
+  opt.value = val; opt.textContent = val; opt.selected = true;
+  const addOptEl = select.querySelector("option[value='__add__']");
+  select.insertBefore(opt, addOptEl);
+  select.value = val;
+
+  input.value = "";
+  customRow.classList.add("hidden");
+  setSaveBtnState(saveBtn, "dirty");
 }
 
 // ── Add month modal ───────────────────────────────────────────────────────────
-function AddMonthModal({ newY, newM, setNewY, setNewM, onAdd, onClose }) {
-  return (
-    <div style={{
-      background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center",
-      justifyContent:"center", padding:20, minHeight:320,
-      borderRadius:"var(--border-radius-lg)",
-    }}>
-      <div style={{
-        background:"var(--color-background-primary)",
-        borderRadius:"var(--border-radius-xl)",
-        border:"0.5px solid var(--color-border-tertiary)",
-        padding:"24px 20px", width:"100%", maxWidth:320,
-      }}>
-        <h3 style={{ fontSize:16, fontWeight:500, margin:"0 0 4px", color:"var(--color-text-primary)" }}>Add month</h3>
-        <p style={{ margin:"0 0 18px", fontSize:12, color:"var(--color-text-secondary)" }}>Track meals for any month</p>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20 }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", marginBottom:6 }}>Month</div>
-            <select value={newM} onChange={e => setNewM(Number(e.target.value))} style={{
-              width:"100%", padding:"9px", fontSize:13,
-              background:"var(--color-background-secondary)",
-              border:"0.5px solid var(--color-border-secondary)",
-              borderRadius:"var(--border-radius-md)", outline:"none", color:"var(--color-text-primary)",
-            }}>
-              {MONTH_NAMES.map((n,i) => <option key={i} value={i}>{n}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", marginBottom:6 }}>Year</div>
-            <input type="number" value={newY} onChange={e => setNewY(Number(e.target.value))} style={{
-              width:"100%", padding:"9px", fontSize:13, boxSizing:"border-box",
-              background:"var(--color-background-secondary)",
-              border:"0.5px solid var(--color-border-secondary)",
-              borderRadius:"var(--border-radius-md)", outline:"none", color:"var(--color-text-primary)",
-            }} />
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={onClose} style={{
-            flex:1, padding:"10px", fontSize:13, fontWeight:500, cursor:"pointer",
-            background:"var(--color-background-secondary)",
-            border:"0.5px solid var(--color-border-secondary)",
-            borderRadius:"var(--border-radius-md)", color:"var(--color-text-secondary)",
-          }}>Cancel</button>
-          <button onClick={onAdd} style={{
-            flex:2, padding:"10px", fontSize:13, fontWeight:500, cursor:"pointer",
-            background:G, color:"#fff", border:"none", borderRadius:"var(--border-radius-md)",
-          }}>Add {MONTH_NAMES[newM]} {newY}</button>
-        </div>
-      </div>
-    </div>
-  );
+function openAddMonth() {
+  const nm = document.getElementById("new-month");
+  const ny = document.getElementById("new-year");
+  nm.value = now.getMonth();
+  ny.value = now.getFullYear();
+  updateModalBtn();
+  nm.onchange = updateModalBtn;
+  ny.oninput  = updateModalBtn;
+  document.getElementById("modal").classList.remove("hidden");
+}
+function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+function updateModalBtn() {
+  const m = parseInt(document.getElementById("new-month").value);
+  const y = parseInt(document.getElementById("new-year").value);
+  document.getElementById("modal-add-btn").textContent = `Add ${MONTH_NAMES[m]} ${y}`;
 }
 
-// ── Main app ──────────────────────────────────────────────────────────────────
-export default function App() {
-  const now      = new Date();
-  const todayKey = mkDKey(now.getFullYear(), now.getMonth(), now.getDate());
+function addMonth() {
+  const m  = parseInt(document.getElementById("new-month").value);
+  const y  = parseInt(document.getElementById("new-year").value);
+  const id = mkMId(y, m);
 
-  const [months,   setMonths]   = useState([]);
-  const [activeId, setActiveId] = useState(null);
-  const [dayKey,   setDayKey]   = useState(null);
-  const [dayData,  setDayData]  = useState({});
-  const [mealOpts, setMealOpts] = useState(() => Object.fromEntries(MEALS.map(m => [m.id, [...m.opts]])));
-  const [loading,  setLoading]  = useState(true);
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [newY,     setNewY]     = useState(now.getFullYear());
-  const [newM,     setNewM]     = useState(now.getMonth());
-
-  const activeMonth = months.find(m => m.id === activeId);
-
-  useEffect(() => {
-    (async () => {
-      const [savedMonths, savedOpts] = await Promise.all([sg("chol-months"), sg("chol-opts")]);
-      if (savedOpts) setMealOpts(savedOpts);
-      if (savedMonths && savedMonths.length > 0) {
-        setMonths(savedMonths);
-        setActiveId(savedMonths[savedMonths.length - 1].id);
-      } else {
-        const def = { id:mkMId(now.getFullYear(),now.getMonth()), year:now.getFullYear(), month:now.getMonth(), label:`${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}` };
-        setMonths([def]); setActiveId(def.id);
-        await ss("chol-months", [def]);
-      }
-      setLoading(false);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!activeMonth) return;
-    (async () => {
-      const { year, month } = activeMonth;
-      const data = {};
-      for (let d = 1; d <= daysIn(year, month); d++) {
-        const k = mkDKey(year, month, d);
-        const v = await sg(`cd-${k}`);
-        if (v) data[k] = v;
-      }
-      setDayData(data);
-    })();
-  }, [activeId]);
-
-  async function patchDay(dk, updates) {
-    const merged = { ...(dayData[dk] || {}), ...updates };
-    setDayData(prev => ({ ...prev, [dk]: merged }));
-    await ss(`cd-${dk}`, merged);
+  if (months.find(x => x.id === id)) {
+    activeId = id; closeModal(); renderMonthTabs(); renderCalendar(); return;
   }
-
-  async function saveMealSel(dk, mealId, selected) {
-    const existing = dayData[dk] || {};
-    const meal     = MEALS.find(x => x.id === mealId);
-    const def      = { selected:(mealOpts[mealId]||meal.opts)[0], checked:false };
-    const updated  = { ...existing, [mealId]:{ ...def, ...existing[mealId], selected } };
-    setDayData(prev => ({ ...prev, [dk]:updated }));
-    await ss(`cd-${dk}`, updated);
-  }
-
-  async function checkMeal(dk, mealId, checked) {
-    const existing = dayData[dk] || {};
-    const meal     = MEALS.find(x => x.id === mealId);
-    const def      = { selected:(mealOpts[mealId]||meal.opts)[0], checked:false };
-    const updated  = { ...existing, [mealId]:{ ...def, ...existing[mealId], checked } };
-    setDayData(prev => ({ ...prev, [dk]:updated }));
-    await ss(`cd-${dk}`, updated);
-  }
-
-  async function addOpt(mealId, opt) {
-    const updated = { ...mealOpts, [mealId]:[...(mealOpts[mealId]||[]), opt] };
-    setMealOpts(updated);
-    await ss("chol-opts", updated);
-  }
-
-  async function addMonth() {
-    const id = mkMId(newY, newM);
-    if (months.find(m => m.id === id)) { setActiveId(id); setShowAdd(false); return; }
-    const m       = { id, year:newY, month:newM, label:`${MONTH_NAMES[newM]} ${newY}` };
-    const updated = [...months, m].sort((a,b) => a.id.localeCompare(b.id));
-    setMonths(updated); setActiveId(id); setShowAdd(false);
-    await ss("chol-months", updated);
-  }
-
-  function getMD(dk, mealId) {
-    const meal = MEALS.find(x => x.id === mealId);
-    return dayData[dk]?.[mealId] || { selected:(mealOpts[mealId]||meal.opts)[0], checked:false };
-  }
-
-  const checkedCount = dayKey ? MEALS.filter(m => dayData[dayKey]?.[m.id]?.checked).length : 0;
-  const dayMeta      = dayKey ? (dayData[dayKey] || {}) : {};
-  const loggedIn     = !!dayMeta._loggedIn;
-  const loginTime    = loggedIn ? fmtTime(dayMeta._loginTime) : "";
-
-  let dayLabel = "";
-  if (dayKey) {
-    const [y,mo,d] = dayKey.split("-").map(Number);
-    dayLabel = new Date(y,mo-1,d).toLocaleDateString("en-IN",{ weekday:"long", day:"numeric", month:"long", year:"numeric" });
-  }
-
-  if (loading) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:200, color:"var(--color-text-secondary)", fontSize:14 }}>
-      Loading...
-    </div>
-  );
-
-  return (
-    <div style={{ fontFamily:"var(--font-sans)", color:"var(--color-text-primary)", position:"relative", minHeight:showAdd?520:undefined }}>
-      <h2 className="sr-only">Cholesterol control daily meal tracker</h2>
-
-      {/* ── Header ── */}
-      <div style={{ padding:"16px 0 14px", borderBottom:"0.5px solid var(--color-border-tertiary)", marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{
-            width:34, height:34, borderRadius:"var(--border-radius-md)", background:G,
-            display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
-          }}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="9" r="7" stroke="white" strokeWidth="1.5"/>
-              <path d="M6 9l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div>
-            <h1 style={{ fontSize:18, fontWeight:500, margin:0, color:"var(--color-text-primary)" }}>Meal tracker</h1>
-            <div style={{ fontSize:11, color:"var(--color-text-secondary)", marginTop:1 }}>Cholesterol control diet plan</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Month tabs ── */}
-      <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.04em" }}>Month</div>
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-          {months.map(m => (
-            <button key={m.id} onClick={() => { setActiveId(m.id); setDayKey(null); }} style={{
-              padding:"6px 14px", borderRadius:100, fontSize:13, fontWeight:500, cursor:"pointer",
-              border:"none", whiteSpace:"nowrap", transition:"all 0.15s",
-              background: activeId===m.id ? G : "var(--color-background-secondary)",
-              color: activeId===m.id ? "#fff" : "var(--color-text-secondary)",
-              outline: activeId===m.id ? "none" : "0.5px solid var(--color-border-secondary)",
-            }}>{m.label}</button>
-          ))}
-          <button onClick={() => setShowAdd(true)} style={{
-            padding:"6px 14px", borderRadius:100, fontSize:13, fontWeight:500, cursor:"pointer",
-            background:"var(--color-background-secondary)", color:"var(--color-text-secondary)",
-            border:"0.5px solid var(--color-border-secondary)", whiteSpace:"nowrap",
-          }}>+ Add month</button>
-        </div>
-      </div>
-
-      {/* ── Day detail ── */}
-      {dayKey && (
-        <div>
-          <button onClick={() => setDayKey(null)} style={{
-            background:"none", border:"none", color:G, fontWeight:500, fontSize:13,
-            cursor:"pointer", padding:0, marginBottom:14, display:"flex", alignItems:"center", gap:4,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M9 2L4 7l5 5" stroke={G} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back to {activeMonth?.label}
-          </button>
-
-          <h2 style={{ fontSize:18, fontWeight:500, margin:"0 0 14px", color:"var(--color-text-primary)" }}>
-            {dayLabel}
-          </h2>
-
-          <CheckInBanner loggedIn={loggedIn} loginTime={loginTime}
-            onCheckIn={() => patchDay(dayKey, { _loggedIn:true, _loginTime:new Date().toISOString() })} />
-
-          <ProgressBar checked={checkedCount} total={MEALS.length} />
-
-          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", textTransform:"uppercase", letterSpacing:"0.04em" }}>
-              Meal log — {MEALS.length} sections
-            </div>
-            <div style={{ fontSize:11, color:"var(--color-text-secondary)" }}>
-              Select · Save · Mark done
-            </div>
-          </div>
-
-          {MEALS.map(meal => {
-            const data = getMD(dayKey, meal.id);
-            return (
-              <MealRow key={meal.id} meal={meal} data={data}
-                opts={mealOpts[meal.id] || meal.opts}
-                onSave={sel => saveMealSel(dayKey, meal.id, sel)}
-                onCheck={chk => checkMeal(dayKey, meal.id, chk)}
-                onAddOpt={opt => addOpt(meal.id, opt)} />
-            );
-          })}
-
-          <div style={{
-            marginTop:18, padding:"14px 16px",
-            background:AL, border:`0.5px solid ${AM}`,
-            borderRadius:"var(--border-radius-lg)",
-          }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-              <Dot color={A} size={6} />
-              <span style={{ fontSize:11, fontWeight:500, color:A, textTransform:"uppercase", letterSpacing:"0.04em" }}>Avoid today</span>
-            </div>
-            <p style={{ margin:0, fontSize:13, color:"#633806", lineHeight:1.6 }}>
-              Packaged cakes, biscuits, fast foods, fried foods, butter, cheese, cream, red meat. Limit salt.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Calendar view ── */}
-      {!dayKey && activeMonth && (
-        <div>
-          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:14 }}>
-            <h2 style={{ fontSize:16, fontWeight:500, margin:0 }}>{activeMonth.label}</h2>
-            <span style={{ fontSize:12, color:"var(--color-text-secondary)" }}>Tap a day to log meals</span>
-          </div>
-          <CalendarView year={activeMonth.year} month={activeMonth.month}
-            dayData={dayData} onSelect={setDayKey} todayKey={todayKey} />
-
-          <div style={{
-            marginTop:20, padding:"12px 16px",
-            background:"var(--color-background-secondary)",
-            border:"0.5px solid var(--color-border-tertiary)",
-            borderRadius:"var(--border-radius-lg)",
-          }}>
-            <p style={{ margin:0, fontSize:12, color:"var(--color-text-secondary)", lineHeight:1.7 }}>
-              <strong style={{ color:"var(--color-text-primary)", fontWeight:500 }}>How to use:</strong>{" "}
-              Tap a day on the calendar → press <strong style={{ fontWeight:500 }}>Log In</strong> to check in for the day → pick your meal from the dropdown → press <strong style={{ fontWeight:500 }}>Save</strong> to record it → tap <strong style={{ fontWeight:500 }}>Mark done</strong> after eating.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Add month overlay ── */}
-      {showAdd && (
-        <div style={{ position:"absolute", inset:0, zIndex:10, borderRadius:"var(--border-radius-lg)" }}>
-          <AddMonthModal newY={newY} newM={newM} setNewY={setNewY} setNewM={setNewM}
-            onAdd={addMonth} onClose={() => setShowAdd(false)} />
-        </div>
-      )}
-    </div>
-  );
+  const entry = { id, year:y, month:m, label:`${MONTH_NAMES[m]} ${y}` };
+  months.push(entry);
+  months.sort((a,b) => a.id.localeCompare(b.id));
+  save("chol-months", months);
+  activeId = id;
+  closeModal();
+  renderMonthTabs();
+  showCal();
 }
+
+// Close modal on backdrop click
+document.getElementById("modal").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
